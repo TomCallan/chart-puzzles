@@ -47,13 +47,17 @@ python3 -m venv .venv
 ### Running on Colab
 
 `colab_build.py` installs the system + Python deps and runs the whole pipeline
-on a Colab VM (faster than a small VM for the full universe):
+on a Colab VM (faster than a small VM for the full universe). One-time setup:
 
 ```bash
 pip install google-colab-cli
 gcloud auth application-default login \
   --scopes=openid,https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/colaboratory
+```
 
+Then, with a private repo, either **upload a tarball** (no git access needed):
+
+```bash
 colab --auth adc new --gpu T4 --session book
 colab --auth adc upload chart-puzzles.tar.gz /content/chart-puzzles.tar.gz -s book
 colab --auth adc exec -s book -f colab_build.py
@@ -61,8 +65,17 @@ colab --auth adc download /content/trading-puzzle-book/output/workbook.pdf ./wor
 colab --auth adc stop -s book
 ```
 
-Or one-shot: `colab --auth adc run --gpu T4 colab_build.py` (clones the repo on
-a fresh VM and releases it afterwards).
+or use a **read-only SSH deploy key**:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/chart-puzzles-deploy -N ""
+# add ~/.ssh/chart-puzzles-deploy.pub as a Deploy Key (read-only) in the repo settings
+colab --auth adc upload ~/.ssh/chart-puzzles-deploy /content/deploy_key -s book
+colab --auth adc exec -s book -f colab_build.py     # clones git@github.com:TomCallan/chart-puzzles.git
+```
+
+`REPO_URL` and `GIT_SSH_KEY` override the clone URL and key path; an HTTPS URL
+with a token also works. One-shot: `colab --auth adc run --gpu T4 colab_build.py`.
 
 ## Practice question types
 

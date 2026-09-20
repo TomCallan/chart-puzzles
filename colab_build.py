@@ -1,20 +1,28 @@
 #!/usr/bin/env python3
 """Build the puzzle book on a Colab VM.
 
-Designed for the Colab CLI. Either:
+Designed for the Colab CLI. Three ways to get the project onto the VM, in
+order of preference for a private repo:
 
-    # interactive session (upload the project first)
-    colab --auth adc new --gpu T4 --session book
-    colab --auth adc upload chart-puzzles.tar.gz /content/chart-puzzles.tar.gz -s book
-    colab --auth adc exec -s book -f colab_build.py
-    colab --auth adc download /content/trading-puzzle-book/output/workbook.pdf ./workbook.pdf -s book
-    colab --auth adc stop -s book
+1. Upload a tarball (no git access needed at all)
+   colab --auth adc new --gpu T4 --session book
+   colab --auth adc upload chart-puzzles.tar.gz /content/chart-puzzles.tar.gz -s book
+   colab --auth adc exec -s book -f colab_build.py
 
-    # or one-shot (fresh VM, auto-released; project is cloned from GitHub)
-    colab --auth adc run --gpu T4 colab_build.py
+2. SSH deploy key (private repo, read-only key)
+   ssh-keygen -t ed25519 -f ~/.ssh/chart-puzzles-deploy -N ""
+   # add ~/.ssh/chart-puzzles-deploy.pub as a *Deploy Key* (read-only) on GitHub
+   colab --auth adc upload ~/.ssh/chart-puzzles-deploy /content/deploy_key -s book
+   colab --auth adc exec -s book -f colab_build.py
 
-Set REPO_URL to override the clone source, or place the project at
-/content/trading-puzzle-book (or a chart-puzzles.tar.gz in /content).
+3. HTTPS token
+   REPO_URL=https://<token>@github.com/TomCallan/chart-puzzles.git \
+     colab --auth adc exec -s book -f colab_build.py
+
+One-shot (fresh VM, auto-released) also works:
+   colab --auth adc run --gpu T4 colab_build.py
+
+Environment overrides: PROJECT_DIR, TARBALL, REPO_URL, GIT_SSH_KEY.
 """
 
 from __future__ import annotations
@@ -26,7 +34,8 @@ from pathlib import Path
 
 PROJECT = Path(os.environ.get("PROJECT_DIR", "/content/trading-puzzle-book"))
 TARBALL = Path(os.environ.get("TARBALL", "/content/chart-puzzles.tar.gz"))
-REPO_URL = os.environ.get("REPO_URL", "https://github.com/TomCallan/chart-puzzles.git")
+REPO_URL = os.environ.get("REPO_URL", "git@github.com:TomCallan/chart-puzzles.git")
+SSH_KEY = os.environ.get("GIT_SSH_KEY", "/content/deploy_key")
 
 APT_PACKAGES = (
     "libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libcairo2 "
@@ -39,16 +48,40 @@ def sh(command: str, check: bool = True) -> None:
     subprocess.run(command, shell=True, check=check)
 
 
+def setup_ssh() -> None:
+    """Install the uploaded private key and trust github.com."""
+    key = Path(SSH_KEY)
+    if not key.exists():
+        sys.exit(
+            f"SSH key not found at {key}. Upload it (colab upload ...) or set "
+            "GIT_SSH_KEY. Alternatively upload a tarball to skip git entirely."
+        )
+    sh("mkdir -p ~/.ssh && chmod 700 ~/.ssh")
+    sh(f"cp {key} ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519")
+    sh("ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null || true")
+    sh(
+        'git config --global core.sshCommand '
+        '"ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"'
+    )
+    print("Testing GitHub SSH access ...", flush=True)
+    sh("ssh -T git@github.com || true")
+
+
 def ensure_project() -> None:
     if PROJECT.exists():
         return
     if TARBALL.exists():
         sh(f"mkdir -p {PROJECT.parent} && tar -xzf {TARBALL} -C {PROJECT.parent}")
         return
-    print(f"Cloning {REPO_URL} ...")
-    sh(f"git clone --depth 1 {REPO_URL} {PROJECT}")
+    if REPO_URL.startswith("git@"):
+        setup_ssh()
+    print(f"Cloning {REPO_URL} ...", flush=True)
+    sh(f"git clone --depth 1 {REPO_URL} {PROJECT}", check=False)
     if not PROJECT.exists():
-        sys.exit("Could not obtain the project: upload a tarball or set REPO_URL.")
+        sys.exit(
+            "Clone failed. Upload a tarball, add a read-only deploy key, or set "
+            "REPO_URL to an HTTPS URL with a token."
+        )
 
 
 def main() -> int:
