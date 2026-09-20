@@ -44,6 +44,26 @@ python3 -m venv .venv
 > **System packages:** WeasyPrint needs Pango/Cairo. On Debian/Ubuntu:
 > `sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libcairo2 libgdk-pixbuf-2.0-0`
 
+### Running on Colab
+
+`colab_build.py` installs the system + Python deps and runs the whole pipeline
+on a Colab VM (faster than a small VM for the full universe):
+
+```bash
+pip install google-colab-cli
+gcloud auth application-default login \
+  --scopes=openid,https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/colaboratory
+
+colab --auth adc new --gpu T4 --session book
+colab --auth adc upload chart-puzzles.tar.gz /content/chart-puzzles.tar.gz -s book
+colab --auth adc exec -s book -f colab_build.py
+colab --auth adc download /content/trading-puzzle-book/output/workbook.pdf ./workbook.pdf -s book
+colab --auth adc stop -s book
+```
+
+Or one-shot: `colab --auth adc run --gpu T4 colab_build.py` (clones the repo on
+a fresh VM and releases it afterwards).
+
 ## Practice question types
 
 Set the mix under `book.question_mix` in `config.yaml`. The types are spread
