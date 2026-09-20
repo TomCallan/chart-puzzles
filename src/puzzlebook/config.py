@@ -13,29 +13,57 @@ import yaml
 # ---------------------------------------------------------------------------
 DEFAULTS: dict[str, Any] = {
     "universe": [
-        "SPY",
-        "AAPL",
-        "MSFT",
-        "NVDA",
-        "AMZN",
-        "META",
-        "GOOGL",
-        "TSLA",
-        "AMD",
-        "NFLX",
-        "JPM",
-        "XOM",
-        "BA",
-        "DIS",
-        "INTC",
-        "KO",
-        "WMT",
-        "CVX",
-        "PFE",
-        "GE",
+        # US large caps
+        "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AVGO",
+        "ORCL", "CRM", "ADBE", "CSCO", "AMD", "INTC", "QCOM", "TXN", "MU",
+        "AMAT", "LRCX", "KLAC", "MRVL", "NOW", "INTU", "IBM", "ACN", "UBER",
+        "NFLX", "DIS", "CMCSA", "T", "VZ", "TMUS", "PFE", "MRK", "ABBV",
+        "JNJ", "LLY", "TMO", "ABT", "DHR", "BMY", "AMGN", "GILD", "CVS",
+        "UNH", "WMT", "COST", "TGT", "HD", "LOW", "MCD", "SBUX", "NKE", "KO",
+        "PEP", "PG", "CL", "KMB", "MO", "PM", "XOM", "CVX", "COP", "SLB",
+        "EOG", "OXY", "JPM", "BAC", "WFC", "GS", "MS", "C", "BLK", "SCHW",
+        "AXP", "V", "MA", "BA", "CAT", "DE", "HON", "GE", "MMM", "LMT",
+        "RTX", "UNP", "FDX", "UPS",
+        # small / mid caps
+        "ROKU", "FUBO", "PLUG", "SOFI", "DKNG", "PATH", "AFRM", "HOOD",
+        "RIVN", "LCID", "NIO", "SNAP", "PINS", "TWLO", "ZM", "DOCU", "OKTA",
+        "CRWD", "ZS", "NET", "DDOG", "MDB", "SNOW", "TEAM",
+        # crypto
+        "BTC-USD", "ETH-USD", "SOL-USD", "ADA-USD", "DOGE-USD", "XRP-USD",
+        "LTC-USD", "BCH-USD", "LINK-USD", "DOT-USD", "AVAX-USD", "ATOM-USD",
+        "XLM-USD", "ETC-USD", "ALGO-USD",
+        # forex
+        "EURUSD=X", "GBPUSD=X", "USDJPY=X", "AUDUSD=X", "USDCAD=X",
+        "USDCHF=X", "NZDUSD=X", "EURGBP=X", "EURJPY=X", "GBPJPY=X",
+        "AUDJPY=X", "EURAUD=X",
+        # commodities
+        "GC=F", "SI=F", "CL=F", "NG=F", "HG=F", "ZC=F", "ZW=F", "ZS=F",
+        # sector / index / international ETFs
+        "SPY", "QQQ", "IWM", "DIA", "VTI", "EEM", "EFA", "FXI", "XLF",
+        "XLE", "XLK", "XLV", "XLI", "XLP", "XLY", "XLU", "XLB", "XLRE",
+        "XLC", "SMH", "EWJ", "EWZ", "EWU", "EWG", "INDA",
+        # more small caps / high beta
+        "PLTR", "RBLX", "U", "IONQ", "RKLB", "ASTS", "JOBY", "ACHR", "SPCE",
+        "CLNE", "BLNK", "CHPT", "EVGO", "FCEL", "BE", "RUN", "FSLR", "ENPH",
+        "SEDG", "BB", "NOK", "AMC", "GME", "SNDL", "AI", "SOUN", "SPWR", "ARRY",
+        # emerging-market / international ADRs
+        "BABA", "JD", "PDD", "BIDU", "NTES", "XPEV", "LI", "BILI", "IQ",
+        "TME", "MOMO", "VIPS", "ZTO", "YUMC", "PTR", "SNP", "CEO", "CHL", "TCEHY",
+        # more crypto
+        "FIL-USD", "NEAR-USD", "ICP-USD", "EOS-USD", "TRX-USD", "XTZ-USD",
+        "THETA-USD", "FTM-USD", "SAND-USD", "MANA-USD", "GRT-USD", "SHIB-USD",
+        "UNI-USD", "AAVE-USD",
+        # more forex
+        "USDSEK=X", "USDNOK=X", "USDSGD=X", "USDMXN=X", "USDZAR=X",
+        "EURNZD=X", "GBPAUD=X", "NZDJPY=X", "CADJPY=X",
+        # more commodities
+        "PL=F", "PA=F", "ZL=F", "KC=F", "SB=F", "CC=F", "LE=F", "HE=F",
+        # more ETFs
+        "VWO", "IEMG", "EWY", "EWT", "EWH", "EWS", "EWQ", "EWI", "EWP",
+        "EWD", "EWA", "EWC", "EWL", "EWN", "TUR", "EIDO", "VNM",
     ],
     "data": {
-        "start": "2016-01-01",
+        "start": "1995-01-01",
         "end": None,
         "interval": "1d",
         "source": "yfinance",  # yfinance | alpaca
@@ -44,10 +72,15 @@ DEFAULTS: dict[str, Any] = {
         "max_symbols": None,
     },
     "patterns": {
-        "min_score": 85.0,
+        "min_score": 75.0,
         "require_hit": False,
+        # Trend gate used by the candlestick patterns (matches the PineScript
+        # "Detect Trend Based On" input): sma50 | sma50_200 | none
+        "trend_rule": "sma50",
         "pivot_window": 5,
         "min_separation": 8,
+        "max_pivot_span": 80,
+        "max_breakout_bars": 50,
         "min_history_bars": 40,
         "max_per_symbol": 3,
         "dedupe_bars": 5,
@@ -61,19 +94,54 @@ DEFAULTS: dict[str, Any] = {
         "candlestick": {
             "enabled": True,
             "names": [
+                # single candle
+                "hammer",
+                "hanging_man",
+                "shooting_star",
+                "inverted_hammer",
+                "marubozu_white",
+                "marubozu_black",
+                "doji",
+                "gravestone_doji",
+                "dragonfly_doji",
+                "long_lower_shadow",
+                "long_upper_shadow",
+                "spinning_top_white",
+                "spinning_top_black",
+                # two candles
+                "on_neck",
+                "rising_window",
+                "falling_window",
+                "tweezer_top",
+                "tweezer_bottom",
+                "dark_cloud_cover",
+                "piercing_line",
                 "bullish_engulfing",
                 "bearish_engulfing",
-                "hammer",
-                "shooting_star",
+                "doji_star_bullish",
+                "doji_star_bearish",
+                "harami_bullish",
+                "harami_bearish",
+                "harami_cross_bullish",
+                "harami_cross_bearish",
+                "kicking_bullish",
+                "kicking_bearish",
+                # three candles
                 "morning_star",
                 "evening_star",
-                "bullish_harami",
-                "bearish_harami",
-                "piercing_line",
-                "dark_cloud_cover",
+                "morning_doji_star",
+                "evening_doji_star",
                 "three_white_soldiers",
                 "three_black_crows",
-                "doji",
+                "abandoned_baby_bullish",
+                "abandoned_baby_bearish",
+                "tri_star_bullish",
+                "tri_star_bearish",
+                "downside_tasuki_gap",
+                "upside_tasuki_gap",
+                # five candles
+                "falling_three_methods",
+                "rising_three_methods",
             ],
         },
         "chart": {
@@ -86,11 +154,13 @@ DEFAULTS: dict[str, Any] = {
             ],
             "tolerance": 0.035,      # 3.5% price tolerance for equal lows/highs
             "min_depth_atr": 1.5,    # neckline depth relative to ATR
+            "max_depth_pct": 0.18,   # reject over-deep troughs/peaks (keeps risk sane)
         },
     },
     "chart": {
         "dpi": 300,
         "lookback_bars": 90,
+        "context_bars": 15,
         "resolution_bars": 25,
         "target_r": 2.0,
         "puzzle_clue": "none",

@@ -3,31 +3,292 @@
 # Every value here overrides the defaults in src/puzzlebook/config.py.
 # =============================================================================
 
-# Tickers to mine for patterns.
+# Tickers to mine for patterns: US large caps, small/mid caps, crypto, forex,
+# commodities and sector/index ETFs. A wide, multi-asset pool gives every
+# pattern type enough winning examples to sample from.
 universe:
-  - SPY
+  # --- US large caps ---
   - AAPL
   - MSFT
   - NVDA
   - AMZN
-  - META
   - GOOGL
+  - META
   - TSLA
+  - AVGO
+  - ORCL
+  - CRM
+  - ADBE
+  - CSCO
   - AMD
-  - NFLX
-  - JPM
-  - XOM
-  - BA
-  - DIS
   - INTC
-  - KO
-  - WMT
-  - CVX
+  - QCOM
+  - TXN
+  - MU
+  - AMAT
+  - LRCX
+  - KLAC
+  - MRVL
+  - NOW
+  - INTU
+  - IBM
+  - ACN
+  - UBER
+  - NFLX
+  - DIS
+  - CMCSA
+  - T
+  - VZ
+  - TMUS
   - PFE
+  - MRK
+  - ABBV
+  - JNJ
+  - LLY
+  - TMO
+  - ABT
+  - DHR
+  - BMY
+  - AMGN
+  - GILD
+  - CVS
+  - UNH
+  - WMT
+  - COST
+  - TGT
+  - HD
+  - LOW
+  - MCD
+  - SBUX
+  - NKE
+  - KO
+  - PEP
+  - PG
+  - CL
+  - KMB
+  - MO
+  - PM
+  - XOM
+  - CVX
+  - COP
+  - SLB
+  - EOG
+  - OXY
+  - JPM
+  - BAC
+  - WFC
+  - GS
+  - MS
+  - C
+  - BLK
+  - SCHW
+  - AXP
+  - V
+  - MA
+  - BA
+  - CAT
+  - DE
+  - HON
   - GE
+  - MMM
+  - LMT
+  - RTX
+  - UNP
+  - FDX
+  - UPS
+  # --- small / mid caps (gap more, so rarer patterns show up) ---
+  - ROKU
+  - FUBO
+  - PLUG
+  - SOFI
+  - DKNG
+  - PATH
+  - AFRM
+  - HOOD
+  - RIVN
+  - LCID
+  - NIO
+  - SNAP
+  - PINS
+  - TWLO
+  - ZM
+  - DOCU
+  - OKTA
+  - CRWD
+  - ZS
+  - NET
+  - DDOG
+  - MDB
+  - SNOW
+  - TEAM
+  # --- crypto ---
+  - BTC-USD
+  - ETH-USD
+  - SOL-USD
+  - ADA-USD
+  - DOGE-USD
+  - XRP-USD
+  - LTC-USD
+  - BCH-USD
+  - LINK-USD
+  - DOT-USD
+  - AVAX-USD
+  - ATOM-USD
+  - XLM-USD
+  - ETC-USD
+  - ALGO-USD
+  # --- forex ---
+  - EURUSD=X
+  - GBPUSD=X
+  - USDJPY=X
+  - AUDUSD=X
+  - USDCAD=X
+  - USDCHF=X
+  - NZDUSD=X
+  - EURGBP=X
+  - EURJPY=X
+  - GBPJPY=X
+  - AUDJPY=X
+  - EURAUD=X
+  # --- commodities ---
+  - GC=F
+  - SI=F
+  - CL=F
+  - NG=F
+  - HG=F
+  - ZC=F
+  - ZW=F
+  - ZS=F
+  # --- sector / index / international ETFs ---
+  - SPY
+  - QQQ
+  - IWM
+  - DIA
+  - VTI
+  - EEM
+  - EFA
+  - FXI
+  - XLF
+  - XLE
+  - XLK
+  - XLV
+  - XLI
+  - XLP
+  - XLY
+  - XLU
+  - XLB
+  - XLRE
+  - XLC
+  - SMH
+  - EWJ
+  - EWZ
+  - EWU
+  - EWG
+  - INDA
+  # --- more small caps / high-beta (gap more, so rare patterns appear) ---
+  - PLTR
+  - RBLX
+  - U
+  - IONQ
+  - RKLB
+  - ASTS
+  - JOBY
+  - ACHR
+  - SPCE
+  - CLNE
+  - BLNK
+  - CHPT
+  - EVGO
+  - FCEL
+  - BE
+  - RUN
+  - FSLR
+  - ENPH
+  - SEDG
+  - BB
+  - NOK
+  - AMC
+  - GME
+  - SNDL
+  - AI
+  - SOUN
+  - SPWR
+  - ARRY
+  # --- emerging-market / international ADRs ---
+  - BABA
+  - JD
+  - PDD
+  - BIDU
+  - NTES
+  - XPEV
+  - LI
+  - BILI
+  - IQ
+  - TME
+  - MOMO
+  - VIPS
+  - ZTO
+  - YUMC
+  - PTR
+  - SNP
+  - CEO
+  - CHL
+  - TCEHY
+  # --- more crypto ---
+  - FIL-USD
+  - NEAR-USD
+  - ICP-USD
+  - EOS-USD
+  - TRX-USD
+  - XTZ-USD
+  - THETA-USD
+  - FTM-USD
+  - SAND-USD
+  - MANA-USD
+  - GRT-USD
+  - SHIB-USD
+  - UNI-USD
+  - AAVE-USD
+  # --- more forex ---
+  - USDSEK=X
+  - USDNOK=X
+  - USDSGD=X
+  - USDMXN=X
+  - USDZAR=X
+  - EURNZD=X
+  - GBPAUD=X
+  - NZDJPY=X
+  - CADJPY=X
+  # --- more commodities ---
+  - PL=F
+  - PA=F
+  - ZL=F
+  - KC=F
+  - SB=F
+  - CC=F
+  - LE=F
+  - HE=F
+  # --- more ETFs ---
+  - VWO
+  - IEMG
+  - EWY
+  - EWT
+  - EWH
+  - EWS
+  - EWQ
+  - EWI
+  - EWP
+  - EWD
+  - EWA
+  - EWC
+  - EWL
+  - EWN
+  - TUR
+  - EIDO
+  - VNM
 
 data:
-  start: "2016-01-01"
+  start: "1995-01-01"
   end: null            # null = up to today
   interval: "1d"
   source: "yfinance"   # yfinance | alpaca
@@ -36,12 +297,17 @@ data:
   max_symbols: null    # set to an int for a quick trial run
 
 patterns:
-  min_score: 85.0      # keep only patterns scoring above this (0-100)
+  min_score: 75.0      # keep only patterns scoring above this (0-100)
   # Keep only patterns that resolved in the pattern's expected direction over
   # the resolution window. Off by default; the catalog reports hit rates.
   require_hit: false
+  # Trend gate for the candlestick patterns (PineScript "Detect Trend Based On"):
+  #   sma50 | sma50_200 | none
+  trend_rule: "sma50"
   pivot_window: 5      # bars either side of a swing high/low
   min_separation: 8    # minimum bars between pattern pivots
+  max_pivot_span: 80   # prune chart-pattern pivots further apart than this
+  max_breakout_bars: 50  # max bars from the last pivot to the breakout
   min_history_bars: 40
   max_per_symbol: 3    # cap charts taken from any one ticker
   dedupe_bars: 5
@@ -54,19 +320,54 @@ patterns:
   candlestick:
     enabled: true
     names:
+      # single candle
+      - hammer
+      - hanging_man
+      - shooting_star
+      - inverted_hammer
+      - marubozu_white
+      - marubozu_black
+      - doji
+      - gravestone_doji
+      - dragonfly_doji
+      - long_lower_shadow
+      - long_upper_shadow
+      - spinning_top_white
+      - spinning_top_black
+      # two candles
+      - on_neck
+      - rising_window
+      - falling_window
+      - tweezer_top
+      - tweezer_bottom
+      - dark_cloud_cover
+      - piercing_line
       - bullish_engulfing
       - bearish_engulfing
-      - hammer
-      - shooting_star
+      - doji_star_bullish
+      - doji_star_bearish
+      - harami_bullish
+      - harami_bearish
+      - harami_cross_bullish
+      - harami_cross_bearish
+      - kicking_bullish
+      - kicking_bearish
+      # three candles
       - morning_star
       - evening_star
-      - bullish_harami
-      - bearish_harami
-      - piercing_line
-      - dark_cloud_cover
+      - morning_doji_star
+      - evening_doji_star
       - three_white_soldiers
       - three_black_crows
-      - doji
+      - abandoned_baby_bullish
+      - abandoned_baby_bearish
+      - tri_star_bullish
+      - tri_star_bearish
+      - downside_tasuki_gap
+      - upside_tasuki_gap
+      # five candles
+      - falling_three_methods
+      - rising_three_methods
   chart:
     enabled: true
     names:
@@ -76,10 +377,12 @@ patterns:
       - inverse_head_and_shoulders
     tolerance: 0.035     # 3.5% price tolerance for "equal" pivots
     min_depth_atr: 1.5   # minimum neckline depth in ATR units
+    max_depth_pct: 0.18  # reject over-deep troughs/peaks (keeps risk sane)
 
 chart:
   dpi: 300
-  lookback_bars: 90      # bars shown before the puzzle moment
+  lookback_bars: 90      # minimum bars shown before the puzzle moment
+  context_bars: 15       # extra bars of context before a long pattern
   resolution_bars: 25    # future bars revealed on the answer chart
   target_r: 2.0          # target distance as a multiple of risk (R)
   # What to reveal after the puzzle moment on the puzzle chart:

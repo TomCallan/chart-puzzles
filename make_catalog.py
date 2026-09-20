@@ -48,6 +48,7 @@ def build_markdown(catalog: Mapping[str, Any]) -> str:
     lines.append(
         f"- **Detections**: {totals.get('detected', 0):,} total · "
         f"{totals.get('above_threshold', 0):,} above threshold · "
+        f"{totals.get('hits_available', 0):,} winning examples available · "
         f"{totals.get('selected', 0):,} selected for the sample"
     )
     if hit or miss:
@@ -56,19 +57,30 @@ def build_markdown(catalog: Mapping[str, Any]) -> str:
 
     lines.append("#### Patterns")
     lines.append("")
-    lines.append("| Pattern | Direction | Detected | Above threshold | Selected | Resolved as expected |")
+    lines.append("| Pattern | Direction | Detected | Above threshold | Hits available | Selected |")
     lines.append("| --- | --- | ---: | ---: | ---: | ---: |")
     ordered = sorted(
-        patterns.items(), key=lambda item: (-item[1].get("selected", 0), item[0])
+        patterns.items(), key=lambda item: (-item[1].get("hits_available", 0), item[0])
     )
     for name, stat in ordered:
-        h, m = stat.get("hit", 0), stat.get("miss", 0)
-        rate = f"{h} / {h + m}" if (h + m) else "—"
         lines.append(
             f"| `{name}` | {stat.get('direction', '')} | {stat.get('detected', 0):,} | "
-            f"{stat.get('above_threshold', 0):,} | {stat.get('selected', 0)} | {rate} |"
+            f"{stat.get('above_threshold', 0):,} | {stat.get('hits_available', 0)} | "
+            f"{stat.get('selected', 0)} |"
         )
     lines.append("")
+
+    short = [
+        name
+        for name, stat in patterns.items()
+        if stat.get("hits_available", 0) < 12
+    ]
+    if short:
+        lines.append(
+            "Patterns with fewer than 12 winning examples available "
+            f"({len(short)}): " + ", ".join(f"`{n}`" for n in sorted(short))
+        )
+        lines.append("")
 
     lines.append("#### Question types")
     lines.append("")

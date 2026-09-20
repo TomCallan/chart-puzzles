@@ -42,4 +42,5 @@ def test_no_lookahead_in_rendered_view(double_bottom_df, cfg):
     for match in matches:
         view = _view(double_bottom_df, match, cfg)
         assert view.index[-1] == double_bottom_df.index[match.end_idx]
-        assert len(view) <= cfg["chart"]["lookback_bars"]
+        # the whole pattern is visible, with room for context
+        assert view.index[0] <= double_bottom_df.index[match.start_idx]

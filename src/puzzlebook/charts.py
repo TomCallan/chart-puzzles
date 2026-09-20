@@ -49,21 +49,35 @@ def _build_style(mplfinance: Any, cfg: Mapping[str, Any]) -> Any:
     )
 
 
+def _view_bounds(
+    df: pd.DataFrame, match: PatternMatch, cfg: Mapping[str, Any], mode: str
+) -> tuple[int, int]:
+    """Start/end positions that always include the whole pattern plus context."""
+    lookback = int(cfg["chart"]["lookback_bars"])
+    resolution = int(cfg["chart"]["resolution_bars"])
+    context = int(cfg["chart"].get("context_bars", 15))
+    start = max(0, min(match.start_idx - context, match.end_idx - lookback + 1))
+    if mode == "answer":
+        end = min(len(df) - 1, match.end_idx + resolution)
+    else:
+        end = match.end_idx
+    return start, end
+
+
 def _puzzle_view(
     df: pd.DataFrame, match: PatternMatch, cfg: Mapping[str, Any]
 ) -> pd.DataFrame:
     """Bars up to and including the puzzle moment (never any future bars)."""
-    lookback = int(cfg["chart"]["lookback_bars"])
-    return df.iloc[: match.end_idx + 1].tail(lookback)
+    start, end = _view_bounds(df, match, cfg, "puzzle")
+    return df.iloc[start : end + 1]
 
 
 def _answer_view(
     df: pd.DataFrame, match: PatternMatch, cfg: Mapping[str, Any]
 ) -> pd.DataFrame:
     """Puzzle bars plus ``resolution_bars`` of future bars."""
-    lookback = int(cfg["chart"]["lookback_bars"])
-    resolution = int(cfg["chart"]["resolution_bars"])
-    return df.iloc[: match.end_idx + 1 + resolution].tail(lookback + resolution)
+    start, end = _view_bounds(df, match, cfg, "answer")
+    return df.iloc[start : end + 1]
 
 
 def _view(
@@ -98,6 +112,111 @@ def _whiteout(axis: Any, left: float, right: float) -> None:
         axis.axhline(tick, color="#dddddd", linewidth=0.6, zorder=6.2)
 
 
+def _draw_pattern(
+    ax: Any, view: pd.DataFrame, df: pd.DataFrame, match: PatternMatch, cfg: Mapping[str, Any]
+) -> None:
+    """Draw the detected pattern's geometry on the answer chart."""
+    line_width = float(cfg["chart"]["line_width"])
+    meta = match.meta
+
+    def pos(idx: int | None) -> int | None:
+        return None if idx is None else _pos(view, df, idx)
+
+    def price_at(position: int, use_high: bool) -> float:
+        return float(view["High"].iloc[position] if use_high else view["Low"].iloc[position])
+
+    # --- candlestick patterns: shade the candles involved -------------------
+    if meta.get("kind") == "candlestick":
+        start = pos(match.start_idx)
+        end = pos(match.end_idx)
+        if start is not None and end is not None:
+            ax.axvspan(start - 0.5, end + 0.5, color="black", alpha=0.12, zorder=0)
+        return
+
+    # --- chart patterns: neckline, connecting lines, labelled pivots --------
+    name = match.name
+    if name == "double_top":
+        points = [
+            (meta.get("high1_idx"), "H1", True),
+            (meta.get("trough_idx"), "N", False),
+            (meta.get("high2_idx"), "H2", True),
+        ]
+    elif name == "double_bottom":
+        points = [
+            (meta.get("low1_idx"), "L1", False),
+            (meta.get("peak_idx"), "N", True),
+            (meta.get("low2_idx"), "L2", False),
+        ]
+    elif name in ("head_and_shoulders", "inverse_head_and_shoulders"):
+        inverse = name.startswith("inverse")
+        points = [
+            (meta.get("shoulder1_idx"), "LS", not inverse),
+            (meta.get("trough1_idx"), "N1", inverse),
+            (meta.get("head_idx"), "H", not inverse),
+            (meta.get("trough2_idx"), "N2", inverse),
+            (meta.get("shoulder2_idx"), "RS", not inverse),
+        ]
+    else:
+        points = []
+
+    neckline = meta.get("neckline")
+    if neckline is not None:
+        ax.axhline(
+            neckline,
+            color="black",
+            linestyle=(0, (6, 4)),
+            linewidth=line_width,
+            zorder=2,
+        )
+
+    # connecting zig-zag through the pivots
+    xs: list[int] = []
+    ys: list[float] = []
+    for idx, _label, use_high in points:
+        position = pos(idx)
+        if position is None:
+            continue
+        xs.append(position)
+        ys.append(price_at(position, use_high))
+    if len(xs) >= 2:
+        ax.plot(xs, ys, color="black", linewidth=line_width, zorder=3)
+
+    for idx, label, use_high in points:
+        position = pos(idx)
+        if position is None:
+            continue
+        y = price_at(position, use_high)
+        ax.plot(
+            position, y, marker="o", markersize=5, markerfacecolor="white",
+            markeredgecolor="black", markeredgewidth=1.0, zorder=5,
+        )
+        ax.annotate(
+            label,
+            xy=(position, y),
+            xytext=(0, 9 if use_high else -14),
+            textcoords="offset points",
+            ha="center",
+            fontsize=7,
+            fontweight="bold",
+            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="black", lw=0.5),
+            zorder=6,
+        )
+
+    if neckline is not None and xs:
+        ax.annotate(
+            "neckline",
+            xy=(xs[0], neckline),
+            xytext=(4, 4),
+            textcoords="offset points",
+            ha="left",
+            va="bottom",
+            fontsize=6.5,
+            style="italic",
+            color="#333",
+            zorder=6,
+        )
+
+
 def _annotate_answer(
     ax: Any,
     view: pd.DataFrame,
@@ -106,7 +225,7 @@ def _annotate_answer(
     cfg: Mapping[str, Any],
     puzzle_pos: int,
 ) -> None:
-    """Shade the revealed region and draw the ideal trade levels."""
+    """Shade the revealed region, draw the pattern geometry and trade levels."""
     from matplotlib.lines import Line2D
 
     line_width = float(cfg["chart"]["line_width"])
@@ -136,36 +255,8 @@ def _annotate_answer(
         zorder=3,
     )
 
-    # --- pattern geometry: pivot markers and (for candles) a shaded span ----
-    start_pos = _pos(view, df, match.start_idx)
-    if match.meta.get("kind") == "candlestick" and start_pos is not None:
-        ax.axvspan(start_pos - 0.5, puzzle_pos + 0.5, color="black", alpha=0.10, zorder=0)
-
-    if "neckline" in match.meta:
-        pivot_keys = (
-            "low1_idx", "low2_idx", "peak_idx", "high1_idx", "high2_idx",
-            "trough_idx", "shoulder1_idx", "head_idx", "shoulder2_idx",
-        )
-        for key in pivot_keys:
-            if key not in match.meta:
-                continue
-            position = _pos(view, df, match.meta[key])
-            if position is None:
-                continue
-            use_high = "high" in key or key in (
-                "peak_idx", "shoulder1_idx", "head_idx", "shoulder2_idx"
-            )
-            price = float(view["High"].iloc[position] if use_high else view["Low"].iloc[position])
-            ax.plot(
-                position,
-                price,
-                marker="o",
-                markersize=4,
-                markerfacecolor="white",
-                markeredgecolor="black",
-                markeredgewidth=0.8,
-                zorder=4,
-            )
+    # --- the pattern itself ------------------------------------------------
+    _draw_pattern(ax, view, df, match, cfg)
 
     # --- ideal entry / stop / target ---------------------------------------
     levels = match.meta.get("levels") or {}
@@ -201,9 +292,8 @@ def _annotate_answer(
             handlelength=1.8,
         )
 
-    label = match.name.replace("_", " ").title()
     ax.annotate(
-        label,
+        match.name.replace("_", " ").title(),
         xy=(puzzle_pos, float(view["High"].max())),
         xytext=(puzzle_pos, float(view["High"].max()) * 1.01),
         ha="right",

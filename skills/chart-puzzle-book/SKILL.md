@@ -56,7 +56,7 @@ sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b \
 | --- | --- |
 | `universe` | tickers to mine |
 | `data.source` | `yfinance` (default) or `alpaca` |
-| `patterns.min_score` | cleanliness threshold, default 85 |
+| `patterns.min_score` | cleanliness threshold, default 75 |
 | `patterns.require_hit` | keep only patterns that resolved as expected |
 | `patterns.max_per_symbol` | cap charts taken from one ticker |
 | `chart.lookback_bars` | bars shown before the puzzle moment |
@@ -106,12 +106,26 @@ To review in a browser on another device:
   rendered. The axis reserves blank space (or shows the configured clue).
 - **Answer chart** – the same candles plus `chart.resolution_bars` future bars.
   The future region is shaded and labelled "answer"; ideal entry / stop / target
-  lines are drawn with a legend.
+  lines are drawn with a legend. The detected pattern itself is drawn too:
+  labelled pivots and connecting lines for chart patterns (`H1`/`N`/`H2`,
+  `LS`/`H`/`RS`, neckline) and a shaded span over the candles for candlestick
+  patterns. Chart-pattern targets use the measured move; candlesticks use
+  `chart.target_r` × risk.
 - **Question types** – `identify` (name the pattern), `direction` (up or down),
   `levels` (mark entry / stop / target).
 - **Clue modes** – `none` (blank space), `volume` (volume only), `price` (price
   only). Invalid pairings are resolved automatically: a `price` clue is never
   used for `direction` or `levels`.
+
+## 5b. Pattern library
+
+44 candlestick patterns (ported from `pinescript_examples.md`) plus double
+top/bottom and head & shoulders. The trend gate is `patterns.trend_rule`
+(`sma50` / `sma50_200` / `none`). The universe should span several asset
+classes — equities, small caps, crypto, forex, commodities and ETFs — because
+gap-based patterns (abandoned baby, tri-star, kicking, three methods) are rare
+in liquid large caps. `make_catalog.py` reports *hits available* per pattern so
+you can confirm there are enough winning examples to sample from.
 
 ## 6. Extending
 

@@ -46,7 +46,10 @@ class DoubleBottom(_ChartPattern):
         pc = cfg["patterns"]["chart"]
         tol = float(pc["tolerance"])
         min_sep = int(cfg["patterns"]["min_separation"])
+        max_span = int(cfg["patterns"].get("max_pivot_span", 80))
         min_depth = float(pc["min_depth_atr"])
+        max_depth_pct = float(pc.get("max_depth_pct", 0.18))
+        max_breakout = int(cfg["patterns"].get("max_breakout_bars", 50))
         atr = _atr(df)
         _, lows = _pivots(df, int(cfg["patterns"]["pivot_window"]))
         high = df["High"].to_numpy()
@@ -58,6 +61,8 @@ class DoubleBottom(_ChartPattern):
                 i, j = int(lows[a]), int(lows[b])
                 if j - i < min_sep:
                     continue
+                if j - i > max_span:
+                    break
                 l1, l2 = low[i], low[j]
                 equality = abs(l1 - l2) / max(l1, l2)
                 if equality > tol:
@@ -70,9 +75,13 @@ class DoubleBottom(_ChartPattern):
                 depth = peak - min(l1, l2)
                 if depth < min_depth * atr.iloc[j]:
                     continue
+                if depth / max(min(l1, l2), 1e-9) > max_depth_pct:
+                    continue
                 after = close[j + 1 :]
                 breakout = np.nonzero(after > peak)[0]
                 if breakout.size == 0:
+                    continue
+                if int(breakout[0]) > max_breakout:
                     continue
                 end_idx = j + 1 + int(breakout[0])
                 matches.append(
@@ -105,7 +114,10 @@ class DoubleTop(_ChartPattern):
         pc = cfg["patterns"]["chart"]
         tol = float(pc["tolerance"])
         min_sep = int(cfg["patterns"]["min_separation"])
+        max_span = int(cfg["patterns"].get("max_pivot_span", 80))
         min_depth = float(pc["min_depth_atr"])
+        max_depth_pct = float(pc.get("max_depth_pct", 0.18))
+        max_breakout = int(cfg["patterns"].get("max_breakout_bars", 50))
         atr = _atr(df)
         highs, _ = _pivots(df, int(cfg["patterns"]["pivot_window"]))
         high = df["High"].to_numpy()
@@ -117,6 +129,8 @@ class DoubleTop(_ChartPattern):
                 i, j = int(highs[a]), int(highs[b])
                 if j - i < min_sep:
                     continue
+                if j - i > max_span:
+                    break
                 h1, h2 = high[i], high[j]
                 equality = abs(h1 - h2) / max(h1, h2)
                 if equality > tol:
@@ -129,9 +143,13 @@ class DoubleTop(_ChartPattern):
                 depth = max(h1, h2) - trough
                 if depth < min_depth * atr.iloc[j]:
                     continue
+                if depth / max(max(h1, h2), 1e-9) > max_depth_pct:
+                    continue
                 after = close[j + 1 :]
                 breakdown = np.nonzero(after < trough)[0]
                 if breakdown.size == 0:
+                    continue
+                if int(breakdown[0]) > max_breakout:
                     continue
                 end_idx = j + 1 + int(breakdown[0])
                 matches.append(
@@ -169,7 +187,10 @@ class HeadAndShoulders(_ChartPattern):
         pc = cfg["patterns"]["chart"]
         tol = float(pc["tolerance"])
         min_sep = int(cfg["patterns"]["min_separation"])
+        max_span = int(cfg["patterns"].get("max_pivot_span", 80))
         min_depth = float(pc["min_depth_atr"])
+        max_depth_pct = float(pc.get("max_depth_pct", 0.18))
+        max_breakout = int(cfg["patterns"].get("max_breakout_bars", 50))
         atr = _atr(df)
         highs, lows = _pivots(df, int(cfg["patterns"]["pivot_window"]))
         pivots: Sequence[int] = lows if inverse else highs
@@ -179,8 +200,12 @@ class HeadAndShoulders(_ChartPattern):
         matches: List[PatternMatch] = []
         for a in range(len(pivots)):
             for b in range(a + 1, len(pivots)):
+                if int(pivots[b]) - int(pivots[a]) > max_span:
+                    break
                 for c in range(b + 1, len(pivots)):
                     i, j, k = int(pivots[a]), int(pivots[b]), int(pivots[c])
+                    if k - j > max_span:
+                        break
                     if (j - i) < min_sep or (k - j) < min_sep:
                         continue
                     p1, p2, p3 = outer[i], outer[j], outer[k]
@@ -198,16 +223,23 @@ class HeadAndShoulders(_ChartPattern):
                     if seg1.size == 0 or seg2.size == 0:
                         continue
                     if inverse:
+                        t1_idx = i + 1 + int(np.argmax(seg1))
+                        t2_idx = j + 1 + int(np.argmax(seg2))
                         neck1 = float(seg1.max())
                         neck2 = float(seg2.max())
                         neckline = max(neck1, neck2)
                         prominence = min(p1, p3) - p2
                     else:
+                        t1_idx = i + 1 + int(np.argmin(seg1))
+                        t2_idx = j + 1 + int(np.argmin(seg2))
                         neck1 = float(seg1.min())
                         neck2 = float(seg2.min())
                         neckline = min(neck1, neck2)
                         prominence = p2 - max(p1, p3)
                     if prominence < min_depth * atr.iloc[j]:
+                        continue
+                    neckline_depth = (p2 - neckline) if not inverse else (neckline - p2)
+                    if neckline_depth / max(abs(p2), 1e-9) > max_depth_pct:
                         continue
                     after = close[k + 1 :]
                     if inverse:
@@ -215,6 +247,8 @@ class HeadAndShoulders(_ChartPattern):
                     else:
                         breakout = np.nonzero(after < neckline)[0]
                     if breakout.size == 0:
+                        continue
+                    if int(breakout[0]) > max_breakout:
                         continue
                     end_idx = k + 1 + int(breakout[0])
                     matches.append(
@@ -230,6 +264,8 @@ class HeadAndShoulders(_ChartPattern):
                                 "shoulder1_idx": i,
                                 "head_idx": j,
                                 "shoulder2_idx": k,
+                                "trough1_idx": t1_idx,
+                                "trough2_idx": t2_idx,
                                 "quality": self._quality(
                                     equality,
                                     float(prominence),

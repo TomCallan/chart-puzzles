@@ -4,6 +4,9 @@
 Writes a JSON manifest that ``build_pdf.py`` consumes, plus a catalog of every
 pattern found so you can decide what to sample for the final edition. No future
 bars are ever rendered on a puzzle chart.
+
+Question types and clue modes are assigned *after* the final selection, so the
+configured mix is exact and independent of how patterns score.
 """
 
 from __future__ import annotations
@@ -11,7 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +29,6 @@ from puzzlebook.data import fetch_ohlcv, load_universe  # noqa: E402
 from puzzlebook.levels import trade_levels  # noqa: E402
 from puzzlebook.patterns import build_detectors, dedupe, score_matches  # noqa: E402
 from puzzlebook.questions import (  # noqa: E402
-    QUESTION_LABELS,
     assign_clues,
     build_question_schedule,
     resolve_clue,
@@ -56,8 +58,10 @@ def _outcome(df: Any, match: Any, resolution: int) -> dict[str, Any]:
     target_idx = min(end + resolution, len(df) - 1)
     move = float(df["Close"].iloc[target_idx] - df["Close"].iloc[end])
     outcome = "up" if move > 0 else "down" if move < 0 else "flat"
-    hit = (match.direction == "bullish" and outcome == "up") or (
-        match.direction == "bearish" and outcome == "down"
+    # Neutral patterns make no directional claim, so they always "resolve".
+    hit = match.direction == "neutral" or (
+        (match.direction == "bullish" and outcome == "up")
+        or (match.direction == "bearish" and outcome == "down")
     )
     return {
         "outcome": outcome,
@@ -97,38 +101,33 @@ def main() -> int:
     require_hit = bool(cfg["patterns"].get("require_hit", False))
     max_per_symbol = int(cfg["patterns"]["max_per_symbol"])
     resolution = int(cfg["chart"]["resolution_bars"])
-    single_clue = str(cfg["chart"].get("puzzle_clue", "none")).lower()
     limit = args.limit if args.limit is not None else int(cfg["book"]["max_puzzles"])
-    clue_schedule = build_clue_schedule(cfg["chart"].get("puzzle_clue_mix"), limit)
-    question_schedule = build_question_schedule(cfg["book"].get("question_mix"), limit)
-    # Assign clues against the questions so the mix is honoured subject to the
-    # per-question validity rules (price clues only work for identify puzzles).
-    clue_schedule = assign_clues(question_schedule, cfg["chart"].get("puzzle_clue_mix")) or clue_schedule
-    single_question = str(cfg["book"].get("question", "identify")).lower()
-    puzzle_index = 0
 
-    print(f"Detectors : {', '.join(d.name for d in detectors)}")
+    print(f"Detectors : {len(detectors)} ({len(detectors) - 4} candlestick, 4 chart)")
+    print(f"Universe  : {len(symbols)} symbols")
     print(f"Threshold : score > {min_score}" + ("  (require hit)" if require_hit else ""))
-    print(f"Universe  : {', '.join(symbols)}\n")
+    print()
 
     stats: dict[str, Any] = {
         "patterns": {},
-        "totals": {"detected": 0, "above_threshold": 0, "selected": 0},
+        "totals": {"detected": 0, "above_threshold": 0, "hits_available": 0, "selected": 0},
     }
 
-    def pattern_stat(name: str) -> dict[str, int]:
+    def pattern_stat(name: str) -> dict[str, Any]:
         return stats["patterns"].setdefault(
             name,
             {
                 "detected": 0,
                 "above_threshold": 0,
+                "hits_available": 0,
                 "selected": 0,
                 "hit": 0,
                 "miss": 0,
             },
         )
 
-    entries: list[dict[str, Any]] = []
+    # --- pass 1: detect, score and collect candidates ----------------------
+    candidates: list[tuple[str, Any]] = []
     for symbol in symbols:
         try:
             df = fetch_ohlcv(symbol, cfg, use_cache=not args.no_cache)
@@ -137,6 +136,7 @@ def main() -> int:
             continue
         matches = _detect(df, detectors, cfg)
         score_matches(df, matches, cfg)
+        above: list = []
         for match in matches:
             stat = pattern_stat(match.name)
             stat.setdefault("direction", match.direction)
@@ -145,75 +145,96 @@ def main() -> int:
             if match.score > min_score:
                 stat["above_threshold"] += 1
                 stats["totals"]["above_threshold"] += 1
+                above.append(match)
 
-        matches = [m for m in matches if m.score > min_score]
-        matches = dedupe(matches, cfg)
-        # Only keep patterns with enough future bars to show a real resolution.
+        # Count every winning example available in the pool (not just selected).
+        for match in above:
+            if match.end_idx + resolution >= len(df):
+                continue
+            if _outcome(df, match, resolution)["hit"]:
+                pattern_stat(match.name)["hits_available"] += 1
+                stats["totals"]["hits_available"] += 1
+
+        matches = dedupe(above, cfg)
         matches = [m for m in matches if m.end_idx + resolution < len(df)]
         for match in matches:
             match.meta["outcome"] = _outcome(df, match, resolution)
         if require_hit:
             matches = [m for m in matches if m.meta["outcome"]["hit"]]
         matches = sorted(matches, key=lambda m: -m.score)[:max_per_symbol]
-
         for match in matches:
             match.symbol = symbol
-            match.meta["levels"] = trade_levels(df, match, cfg)
-            question = (
-                question_schedule[puzzle_index % len(question_schedule)]
-                if question_schedule
-                else single_question
-            )
-            raw_clue = (
-                clue_schedule[puzzle_index % len(clue_schedule)]
-                if clue_schedule
-                else single_clue
-            )
-            clue = resolve_clue(question, raw_clue)
-            suffix = "" if clue == "none" else f"_{clue}"
-            stem = f"{symbol}_{match.name}_{match.end_idx}_{question}{suffix}"
-            puzzle_png = charts_dir / f"{stem}_puzzle.png"
-            answer_png = charts_dir / f"{stem}_answer.png"
+            candidates.append((symbol, match))
+        print(f"  {symbol}: {len(matches)} candidates")
+
+    # --- final selection, then assign question/clue by rank ----------------
+    candidates.sort(key=lambda item: -item[1].score)
+    candidates = candidates[:limit]
+
+    question_schedule = build_question_schedule(cfg["book"].get("question_mix"), len(candidates))
+    single_question = str(cfg["book"].get("question", "identify")).lower()
+    clue_schedule = assign_clues(question_schedule, cfg["chart"].get("puzzle_clue_mix"))
+    if not clue_schedule:
+        clue_schedule = build_clue_schedule(cfg["chart"].get("puzzle_clue_mix"), len(candidates))
+    single_clue = str(cfg["chart"].get("puzzle_clue", "none")).lower()
+
+    # --- pass 2: render -----------------------------------------------------
+    entries: list[dict[str, Any]] = []
+    dfs: dict[str, Any] = {}
+    for index, (symbol, match) in enumerate(candidates):
+        question = (
+            question_schedule[index % len(question_schedule)]
+            if question_schedule
+            else single_question
+        )
+        raw_clue = (
+            clue_schedule[index % len(clue_schedule)] if clue_schedule else single_clue
+        )
+        clue = resolve_clue(question, raw_clue)
+
+        if symbol not in dfs:
             try:
-                render_chart(df, match, cfg, puzzle_png, mode="puzzle", clue=clue)
-                render_chart(df, match, cfg, answer_png, mode="answer")
+                dfs[symbol] = fetch_ohlcv(symbol, cfg, use_cache=not args.no_cache)
             except Exception as exc:
-                print(f"    ! render failed for {stem}: {exc}", file=sys.stderr)
+                print(f"  {symbol}: refetch failed ({exc})", file=sys.stderr)
                 continue
+        df = dfs[symbol]
+        match.meta["levels"] = trade_levels(df, match, cfg)
 
-            outcome = match.meta["outcome"]
-            entries.append(
-                {
-                    "symbol": symbol,
-                    "name": match.name,
-                    "direction": match.direction,
-                    "score": match.score,
-                    "start_idx": match.start_idx,
-                    "end_idx": match.end_idx,
-                    "bars": match.bar_count,
-                    "factors": match.meta.get("factors", {}),
-                    "levels": match.meta.get("levels", {}),
-                    "question": question,
-                    "clue": clue,
-                    "outcome": outcome,
-                    "chart": _relative(puzzle_png),
-                    "answer_chart": _relative(answer_png),
-                }
-            )
-            pattern_stat(match.name)["selected"] += 1
-            stat = pattern_stat(match.name)
-            stat["hit" if outcome["hit"] else "miss"] += 1
-            stats["totals"]["selected"] += 1
-            stats["totals"]["hit" if outcome["hit"] else "miss"] = (
-                stats["totals"].get("hit" if outcome["hit"] else "miss", 0) + 1
-            )
-            puzzle_index += 1
+        suffix = "" if clue == "none" else f"_{clue}"
+        stem = f"{symbol}_{match.name}_{match.end_idx}_{question}{suffix}"
+        puzzle_png = charts_dir / f"{stem}_puzzle.png"
+        answer_png = charts_dir / f"{stem}_answer.png"
+        try:
+            render_chart(df, match, cfg, puzzle_png, mode="puzzle", clue=clue)
+            render_chart(df, match, cfg, answer_png, mode="answer")
+        except Exception as exc:
+            print(f"    ! render failed for {stem}: {exc}", file=sys.stderr)
+            continue
 
-        kept = ", ".join(f"{m.name} ({m.score})" for m in matches) or "none"
-        print(f"  {symbol}: {kept}")
-
-    entries.sort(key=lambda e: -e["score"])
-    entries = entries[:limit]
+        outcome = match.meta["outcome"]
+        entries.append(
+            {
+                "symbol": symbol,
+                "name": match.name,
+                "direction": match.direction,
+                "score": match.score,
+                "start_idx": match.start_idx,
+                "end_idx": match.end_idx,
+                "bars": match.bar_count,
+                "factors": match.meta.get("factors", {}),
+                "levels": match.meta.get("levels", {}),
+                "question": question,
+                "clue": clue,
+                "outcome": outcome,
+                "chart": _relative(puzzle_png),
+                "answer_chart": _relative(answer_png),
+            }
+        )
+        stat = pattern_stat(match.name)
+        stat["selected"] += 1
+        stat["hit" if outcome["hit"] else "miss"] += 1
+        stats["totals"]["selected"] += 1
 
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(entries, indent=2), encoding="utf-8")

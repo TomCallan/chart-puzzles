@@ -133,13 +133,22 @@ def _quality_factor(df: pd.DataFrame, match: PatternMatch) -> float:
         return _ramp(upper / max(body, 1e-9), 2.0, 4.0) * _prominence(df, match)
     if name == "doji":
         return 1.0 - _ramp(body / rng, 0.04, 0.15)
-    if name in ("morning_star", "evening_star"):
+    if name in ("gravestone_doji", "dragonfly_doji"):
+        return 1.0 - _ramp(body / rng, 0.04, 0.15)
+    if name in ("morning_star", "evening_star", "morning_doji_star", "evening_doji_star"):
         prev_body = abs(c[end - 1] - o[end - 1])
         first_body = abs(c[end - 2] - o[end - 2])
         return 0.5 * _ramp(body / max(first_body, 1e-9), 0.5, 1.2) + 0.5 * (
             1.0 - _ramp(prev_body / max(rng, 1e-9), 0.3, 0.6)
         )
-    if name in ("piercing_line", "dark_cloud_cover", "bullish_harami", "bearish_harami"):
+    if name in (
+        "piercing_line",
+        "dark_cloud_cover",
+        "harami_bullish",
+        "harami_bearish",
+        "harami_cross_bullish",
+        "harami_cross_bearish",
+    ):
         return 0.75
     return 0.7
 
