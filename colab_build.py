@@ -1,28 +1,29 @@
 #!/usr/bin/env python3
-"""Build the puzzle book on a Colab VM.
+"""Run the full pattern detection on a Colab VM and push the results back.
 
-Designed for the Colab CLI. The repo is public, so the default clone is HTTPS
-and needs no credentials. Other ways to get the project onto the VM:
+What it does:
+  1. installs the system + Python dependencies
+  2. clones the repo (HTTPS by default; SSH if REPO_URL starts with git@)
+  3. runs generate_charts.py -> build_pdf.py -> make_catalog.py
+  4. commits the refreshed catalog (README.md + CATALOG.md) and pushes to GitHub
 
-1. Clone from GitHub (default)
-   colab --auth adc new --gpu T4 --session book
-   colab --auth adc exec -s book -f colab_build.py
+Usage:
+    colab --auth adc new --session book
+    GITHUB_TOKEN=<pat> colab --auth adc exec -s book -f colab_build.py
+    colab --auth adc stop -s book
 
-2. Upload a tarball (works with a private repo, no git access needed)
-   colab --auth adc upload chart-puzzles.tar.gz /content/chart-puzzles.tar.gz -s book
-   colab --auth adc exec -s book -f colab_build.py
+The token needs write access to the repo contents (classic PAT `repo` scope, or
+a fine-grained token with Contents: read and write). Without GITHUB_TOKEN the
+build still runs and the driver tells you how to download the catalog instead.
 
-3. SSH deploy key (private repo, read-only key)
-   ssh-keygen -t ed25519 -f ~/.ssh/chart-puzzles-deploy -N ""
-   # add ~/.ssh/chart-puzzles-deploy.pub as a *Deploy Key* (read-only) on GitHub
-   colab --auth adc upload ~/.ssh/chart-puzzles-deploy /content/deploy_key -s book
-   REPO_URL=git@github.com:TomCallan/chart-puzzles.git \
-     colab --auth adc exec -s book -f colab_build.py
-
-One-shot (fresh VM, auto-released):
-   colab --auth adc run --gpu T4 colab_build.py
-
-Environment overrides: PROJECT_DIR, TARBALL, REPO_URL, GIT_SSH_KEY.
+Environment overrides:
+    GITHUB_TOKEN     PAT used for the push (HTTPS)
+    REPO_URL         clone URL (default https://github.com/TomCallan/chart-puzzles.git)
+    PROJECT_DIR      where to put the checkout (default /content/trading-puzzle-book)
+    TARBALL          optional tarball to unpack instead of cloning
+    GIT_SSH_KEY      private key path for an SSH clone (default /content/deploy_key)
+    COMMIT_OUTPUTS   set to 1 to also commit output/*.pdf
+    COMMIT_MESSAGE   commit message (default includes the run summary)
 """
 
 from __future__ import annotations
@@ -38,6 +39,10 @@ REPO_URL = os.environ.get(
     "REPO_URL", "https://github.com/TomCallan/chart-puzzles.git"
 )
 SSH_KEY = os.environ.get("GIT_SSH_KEY", "/content/deploy_key")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+COMMIT_OUTPUTS = os.environ.get("COMMIT_OUTPUTS", "0") == "1"
+GIT_NAME = os.environ.get("GIT_NAME", "Howard Hughes")
+GIT_EMAIL = os.environ.get("GIT_EMAIL", "howard.hughes@users.noreply.github.com")
 
 APT_PACKAGES = (
     "libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libcairo2 "
@@ -46,18 +51,15 @@ APT_PACKAGES = (
 
 
 def sh(command: str, check: bool = True) -> None:
-    print(f"\n$ {command}", flush=True)
+    shown = command.replace(GITHUB_TOKEN, "***") if GITHUB_TOKEN else command
+    print(f"\n$ {shown}", flush=True)
     subprocess.run(command, shell=True, check=check)
 
 
 def setup_ssh() -> None:
-    """Install the uploaded private key and trust github.com."""
     key = Path(SSH_KEY)
     if not key.exists():
-        sys.exit(
-            f"SSH key not found at {key}. Upload it (colab upload ...) or set "
-            "GIT_SSH_KEY. Alternatively upload a tarball to skip git entirely."
-        )
+        sys.exit(f"SSH key not found at {key}. Upload it or set GIT_SSH_KEY.")
     sh("mkdir -p ~/.ssh && chmod 700 ~/.ssh")
     sh(f"cp {key} ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519")
     sh("ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null || true")
@@ -65,7 +67,6 @@ def setup_ssh() -> None:
         'git config --global core.sshCommand '
         '"ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"'
     )
-    print("Testing GitHub SSH access ...", flush=True)
     sh("ssh -T git@github.com || true")
 
 
@@ -77,36 +78,92 @@ def ensure_project() -> None:
         return
     if REPO_URL.startswith("git@"):
         setup_ssh()
-    print(f"Cloning {REPO_URL} ...", flush=True)
     sh(f"git clone --depth 1 {REPO_URL} {PROJECT}", check=False)
     if not PROJECT.exists():
-        sys.exit(
-            "Clone failed. Upload a tarball, add a read-only deploy key, or set "
-            "REPO_URL to an HTTPS URL with a token."
-        )
+        sys.exit("Clone failed. Set REPO_URL, upload a tarball, or add a deploy key.")
 
 
-def main() -> int:
+def build() -> None:
     sh(f"apt-get -qq update && apt-get -qq install -y {APT_PACKAGES}")
     ensure_project()
     sh(f"pip install -q -r {PROJECT}/requirements.txt")
     sh(f"cd {PROJECT} && python generate_charts.py")
     sh(f"cd {PROJECT} && python build_pdf.py")
     sh(f"cd {PROJECT} && python make_catalog.py")
+    if (PROJECT / "make_review.py").exists():
+        sh(f"cd {PROJECT} && python make_review.py", check=False)
 
+
+def summarise() -> str:
+    import json
+
+    catalog = PROJECT / "build" / "catalog.json"
+    if not catalog.exists():
+        return "Update catalog from Colab run"
+    data = json.loads(catalog.read_text())
+    questions = data.get("questions", {})
+    clues = data.get("clues", {})
+    short = [
+        name
+        for name, stat in data.get("patterns", {}).items()
+        if stat.get("hits_available", 0) < 12
+    ]
+    return (
+        "Refresh catalog from full detection run\n\n"
+        f"- {data.get('selected', 0)} puzzles selected, "
+        f"{data.get('totals', {}).get('hits_available', 0)} winning examples available\n"
+        f"- questions: {questions}\n"
+        f"- clues: {clues}\n"
+        f"- patterns below 12 hits: {len(short)}"
+    )
+
+
+def push() -> None:
+    if not GITHUB_TOKEN:
+        print(
+            "\nNo GITHUB_TOKEN set, so nothing was pushed. Download the results:\n"
+            f"  colab --auth adc download {PROJECT}/build/catalog.json ./catalog.json -s <session>\n"
+            f"  colab --auth adc download {PROJECT}/CATALOG.md ./CATALOG.md -s <session>"
+        )
+        return
+
+    remote = "github.com/TomCallan/chart-puzzles.git"
+    sh(f'cd {PROJECT} && git config user.name "{GIT_NAME}"')
+    sh(f'cd {PROJECT} && git config user.email "{GIT_EMAIL}"')
+    sh(f"cd {PROJECT} && git remote set-url origin https://{GITHUB_TOKEN}@{remote}")
+    sh(f"cd {PROJECT} && git add -A README.md CATALOG.md config.yaml", check=False)
+    if COMMIT_OUTPUTS:
+        sh(
+            f"cd {PROJECT} && git add -f output/workbook.pdf output/answer_key.pdf",
+            check=False,
+        )
+
+    staged = subprocess.run(
+        f"cd {PROJECT} && git diff --cached --quiet",
+        shell=True,
+    ).returncode
+    if staged == 0:
+        print("\nNo catalog changes to commit.")
+        return
+
+    message = os.environ.get("COMMIT_MESSAGE") or summarise()
+    subprocess.run(
+        ["git", "-C", str(PROJECT), "commit", "-m", message], check=True
+    )
+    sh(f"cd {PROJECT} && git push origin HEAD:main")
+    print("\nPushed the refreshed catalog to main.")
+
+
+def main() -> int:
+    build()
     print("\n=== Done ===")
     for path in (
         PROJECT / "output/workbook.pdf",
-        PROJECT / "output/answer_key.pdf",
         PROJECT / "build/catalog.json",
         PROJECT / "CATALOG.md",
     ):
         print(f"  {path}  ({'ok' if path.exists() else 'MISSING'})")
-    print(
-        "\nDownload with:\n"
-        f"  colab --auth adc download {PROJECT}/output/workbook.pdf ./workbook.pdf -s <session>\n"
-        f"  colab --auth adc download {PROJECT}/build/catalog.json ./catalog.json -s <session>"
-    )
+    push()
     return 0
 
 

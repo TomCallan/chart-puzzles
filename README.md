@@ -55,15 +55,20 @@ gcloud auth application-default login \
   --scopes=openid,https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/colaboratory
 ```
 
-Then build and download the results:
+Then run the full detection and push the refreshed catalog back:
 
 ```bash
-colab --auth adc new --gpu T4 --session book
-colab --auth adc exec -s book -f colab_build.py
-colab --auth adc download /content/trading-puzzle-book/output/workbook.pdf ./workbook.pdf -s book
-colab --auth adc download /content/trading-puzzle-book/build/catalog.json ./catalog.json -s book
+colab --auth adc new --session book
+GITHUB_TOKEN=<pat> colab --auth adc exec -s book -f colab_build.py
 colab --auth adc stop -s book
 ```
+
+`GITHUB_TOKEN` needs write access to repo contents (classic PAT with `repo`
+scope, or a fine-grained token with *Contents: read and write*). The driver runs
+`generate_charts.py → build_pdf.py → make_catalog.py`, then commits the updated
+`README.md` catalog section and `CATALOG.md` and pushes to `main`. Set
+`COMMIT_OUTPUTS=1` to also commit the generated PDFs. Without a token it still
+builds and prints the download commands.
 
 The driver clones the repo over HTTPS by default. To keep the repo private,
 upload a tarball instead (`colab upload chart-puzzles.tar.gz /content/...`), or
