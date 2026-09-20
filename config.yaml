@@ -1,0 +1,136 @@
+# =============================================================================
+# The Chart Pattern Puzzle Book - configuration
+# Every value here overrides the defaults in src/puzzlebook/config.py.
+# =============================================================================
+
+# Tickers to mine for patterns.
+universe:
+  - SPY
+  - AAPL
+  - MSFT
+  - NVDA
+  - AMZN
+  - META
+  - GOOGL
+  - TSLA
+  - AMD
+  - NFLX
+  - JPM
+  - XOM
+  - BA
+  - DIS
+  - INTC
+  - KO
+  - WMT
+  - CVX
+  - PFE
+  - GE
+
+data:
+  start: "2016-01-01"
+  end: null            # null = up to today
+  interval: "1d"
+  source: "yfinance"   # yfinance | alpaca
+  cache_dir: ".cache/ohlcv"
+  use_cache: true
+  max_symbols: null    # set to an int for a quick trial run
+
+patterns:
+  min_score: 85.0      # keep only patterns scoring above this (0-100)
+  pivot_window: 5      # bars either side of a swing high/low
+  min_separation: 8    # minimum bars between pattern pivots
+  min_history_bars: 40
+  max_per_symbol: 3    # cap charts taken from any one ticker
+  dedupe_bars: 5
+  weights:
+    trend: 0.25
+    volume: 0.20
+    size: 0.15
+    quality: 0.30
+    context: 0.10
+  candlestick:
+    enabled: true
+    names:
+      - bullish_engulfing
+      - bearish_engulfing
+      - hammer
+      - shooting_star
+      - morning_star
+      - evening_star
+      - bullish_harami
+      - bearish_harami
+      - piercing_line
+      - dark_cloud_cover
+      - three_white_soldiers
+      - three_black_crows
+      - doji
+  chart:
+    enabled: true
+    names:
+      - double_bottom
+      - double_top
+      - head_and_shoulders
+      - inverse_head_and_shoulders
+    tolerance: 0.035     # 3.5% price tolerance for "equal" pivots
+    min_depth_atr: 1.5   # minimum neckline depth in ATR units
+
+chart:
+  dpi: 300
+  lookback_bars: 90      # bars shown before the puzzle moment
+  resolution_bars: 25    # future bars revealed on the answer chart
+  target_r: 2.0          # target distance as a multiple of risk (R)
+  # What to reveal after the puzzle moment on the puzzle chart:
+  #   none   - nothing (blank drawing space)
+  #   volume - volume bars only (predict price from volume)
+  #   price  - price bars only (predict volume from price)
+  # `puzzle_clue` is the fallback single mode; `puzzle_clue_mix` (when
+  # non-empty) spreads the types across the book by weight.
+  puzzle_clue: "none"
+  puzzle_clue_mix:
+    none: 30
+    volume: 30
+    price: 30
+  min_history_bars: 40
+  figsize: [7.0, 5.0]   # inches; keep the aspect close to the CSS container
+  show_volume: true
+  yaxis_location: "right"
+  show_x_labels: false
+  line_width: 1.1
+  grid: true
+
+book:
+  title: "The Chart Pattern Puzzle Book"
+  subtitle: "Identify the Pattern. Mark the Levels."
+  author: "Howard Hughes"
+  edition: "First Edition"
+  trim:
+    width: 8.5
+    height: 11.0
+  # KDP no-bleed minimums. `inside` is the gutter and depends on page count:
+  #   24-150 pp -> 0.375", 151-300 pp -> 0.625", 301-500 pp -> 0.875"
+  margins:
+    inside: 0.375
+    outside: 0.25
+    top: 0.25
+    bottom: 0.25
+  dot_grid:
+    color: "#dcdcdc"
+    spacing: 0.2
+    radius: 0.9
+  max_puzzles: 60
+  show_page_numbers: true
+  # Practice question types and their weights (spread evenly through the book):
+  #   identify  - name the pattern completing at the dashed line
+  #   direction - decide whether the next move is up or down
+  #   levels    - mark the entry, stop-loss and first target
+  question_mix:
+    identify: 40
+    direction: 30
+    levels: 30
+
+output:
+  charts_dir: "assets/charts"
+  manifest: "build/manifest.json"
+  pdf: "output/workbook.pdf"
+  answer_key_pdf: "output/answer_key.pdf"
+  render_answer_key: true

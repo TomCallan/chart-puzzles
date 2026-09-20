@@ -1,0 +1,306 @@
+/* ==========================================================================
+   The Chart Pattern Puzzle Book - print stylesheet
+   --------------------------------------------------------------------------
+   Target: Amazon KDP paperback, 8.5 x 11 in, NO bleed.
+
+   Page 1 is a right-hand (recto) page. The binding/gutter margin sits on the
+   inside edge, so :right pages get a larger left margin and :left pages get a
+   larger right margin. build_pdf.py injects a small <style> block after this
+   file to override the @page margins and dot grid from config.yaml.
+   ========================================================================== */
+
+@page {
+  size: 8.5in 11in;
+  margin: 0.25in 0.25in 0.25in 0.375in; /* top outside bottom inside */
+}
+@page :right {
+  margin-left: 0.375in; /* gutter on the binding (left) edge */
+  margin-right: 0.25in;
+}
+@page :left {
+  margin-left: 0.25in;
+  margin-right: 0.375in; /* gutter on the binding (right) edge */
+}
+
+/* --------------------------------------------------------------------------
+   Reset & typography
+   -------------------------------------------------------------------------- */
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #111;
+  font-size: 10.5pt;
+  line-height: 1.35;
+  background: #fff;
+}
+
+/* Each .page is exactly one physical sheet. */
+.page {
+  break-after: page;
+  page-break-after: always;
+  position: relative;
+}
+.page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+img {
+  max-width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Puzzle page
+   -------------------------------------------------------------------------- */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1.2pt solid #111;
+  padding-bottom: 3pt;
+  margin-bottom: 9pt;
+}
+.page-header .tag {
+  font-size: 9pt;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.page-header .meta {
+  font-size: 8.5pt;
+  color: #444;
+}
+.page-header .puzzle-number {
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.chart-container {
+  width: 100%;
+  height: 5.9in;
+  border: 1pt solid #111;
+  padding: 4pt;
+  background: #fff;
+}
+.chart-container img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.prompt {
+  margin-top: 11pt;
+}
+.prompt-title {
+  font-weight: 700;
+  margin: 0 0 4pt;
+}
+.prompt-list {
+  margin: 6pt 0 0 16pt;
+  padding: 0;
+}
+.prompt-list li {
+  margin-bottom: 3pt;
+}
+
+/* --------------------------------------------------------------------------
+   Workspace page (subtle dot grid for pencil work)
+   -------------------------------------------------------------------------- */
+.page--workspace {
+  position: relative;
+}
+.dot-grid {
+  width: 100%;
+  background-color: #fff;
+  background-repeat: repeat;
+  background-position: 0 0;
+}
+.workspace-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.06in;
+  text-align: center;
+  font-size: 8.5pt;
+  color: #888;
+}
+
+/* --------------------------------------------------------------------------
+   Front matter
+   -------------------------------------------------------------------------- */
+.page--front {
+  height: 9.6in;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+.book-title {
+  font-size: 31pt;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0 0 10pt;
+}
+.book-subtitle {
+  font-size: 14pt;
+  font-style: italic;
+  color: #333;
+  margin: 0 0 46pt;
+}
+.book-author {
+  font-size: 12pt;
+  margin: 0 0 4pt;
+}
+.book-edition {
+  font-size: 9.5pt;
+  color: #666;
+}
+.howto {
+  margin: 40pt auto 0;
+  max-width: 5.4in;
+  text-align: left;
+  font-size: 10pt;
+}
+.howto h2 {
+  font-size: 12pt;
+  margin: 0 0 6pt;
+}
+.howto ol {
+  margin: 0 0 0 16pt;
+  padding: 0;
+}
+.howto li {
+  margin-bottom: 4pt;
+}
+
+/* --------------------------------------------------------------------------
+   Answer key
+   -------------------------------------------------------------------------- */
+.answer-key-title {
+  font-size: 20pt;
+  font-weight: 800;
+  border-bottom: 1.2pt solid #111;
+  padding-bottom: 4pt;
+  margin: 0 0 10pt;
+}
+.answer {
+  border-top: 1pt solid #111;
+  padding-top: 6pt;
+  margin-bottom: 13pt;
+}
+.answer:first-of-type {
+  border-top: none;
+}
+.answer-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10pt;
+  font-weight: 700;
+  margin-bottom: 4pt;
+}
+.answer-head .answer-symbol {
+  font-weight: 400;
+  color: #444;
+}
+.answer-clue {
+  font-weight: 400;
+  font-style: italic;
+  color: #666;
+}
+.answer-chart {
+  width: 100%;
+  height: 3.5in;
+}
+.answer-chart img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.answer-note {
+  font-size: 9pt;
+  color: #333;
+  margin-top: 4pt;
+}
+.answer-levels {
+  display: flex;
+  gap: 14pt;
+  margin-top: 4pt;
+  font-size: 9pt;
+}
+.answer-levels .lv b {
+  font-weight: 700;
+}
+.answer-levels .muted {
+  color: #666;
+}
+.answer-outcome {
+  font-style: italic;
+  color: #444;
+}
+
+/* --------------------------------------------------------------------------
+   Page numbers
+   -------------------------------------------------------------------------- */
+.page-number {
+  font-size: 9pt;
+  color: #333;
+}
+.page--puzzle .page-number {
+  display: block;
+  text-align: center;
+  margin-top: 10pt;
+}
+.page--answer .page-number {
+  display: block;
+  text-align: center;
+  margin-top: 6pt;
+}
+.page--workspace .page-number {
+  position: absolute;
+  bottom: 0.05in;
+  right: 0;
+}
+
+/* ==========================================================================
+   Screen preview (browser review only). @page rules are ignored on screen, so
+   we draw each sheet and its margins explicitly.
+   ========================================================================== */
+@media screen {
+  html {
+    background: #e9e9ec;
+  }
+  body {
+    margin: 0;
+    padding: 28px 0 64px;
+    background: #e9e9ec;
+  }
+  .page,
+  .page.page--workspace,
+  .page.page--front,
+  .page.page--blank,
+  .page.page--answer {
+    width: 8.5in;
+    height: auto;
+    min-height: 11in;
+    margin: 0 auto 26px;
+    padding: 0.25in 0.25in 0.25in 0.375in;
+    background: #fff;
+    box-shadow: 0 3px 16px rgba(0, 0, 0, 0.28);
+    overflow: hidden;
+  }
+  .page:nth-child(even) {
+    padding-left: 0.25in;
+    padding-right: 0.375in;
+  }
+  .page.page--workspace .dot-grid {
+    height: 10.4in;
+  }
+}

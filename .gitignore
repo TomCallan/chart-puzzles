@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.cache/
+build/
+output/
+assets/charts/
+public/
+review.html
+review_answer_key.html
+index.html

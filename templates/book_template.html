@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ cfg.book.title }}</title>
+  <style>{{ styles_css | safe }}</style>
+  <style>{{ css_override | safe }}</style>
+</head>
+<body>
+{% for page in pages %}
+{% if page.kind == "front" %}
+  <section class="page page--front">
+    <h1 class="book-title">{{ page.title }}</h1>
+    <p class="book-subtitle">{{ page.subtitle }}</p>
+    <p class="book-author">{{ page.author }}</p>
+    <p class="book-edition">{{ page.edition }}</p>
+    <div class="howto">
+      <h2>How to use this book</h2>
+      <ol>
+        <li>Every left-hand page shows a price chart that ends at a dashed line &mdash; the exact moment a pattern completes.</li>
+        <li>Name the pattern and mark the neckline or key level.</li>
+        <li>On the facing workspace page, sketch your entry, stop-loss and first target.</li>
+        <li>Check your work against the answer key at the back of the book.</li>
+      </ol>
+    </div>
+  </section>
+{% elif page.kind == "blank" %}
+  <section class="page page--blank"></section>
+{% elif page.kind == "puzzle" %}
+  <section class="page page--puzzle">
+    <div class="page-header">
+      <span class="tag">{{ page.puzzle.sector }}</span>
+      <span class="puzzle-number">Puzzle {{ page.puzzle.number }} &middot; {{ page.puzzle.question_label }}</span>
+      <span class="meta">{{ page.puzzle.difficulty }}{% if page.puzzle.clue_label %} &middot; {{ page.puzzle.clue_label }}{% endif %}</span>
+    </div>
+    <div class="chart-container">
+      <img src="{{ page.puzzle.chart }}" alt="Price chart for puzzle {{ page.puzzle.number }}">
+    </div>
+    <div class="prompt">
+      <p class="prompt-title">{{ page.puzzle.question_title }}</p>
+      <p>{{ page.puzzle.prompt }}</p>
+      <ul class="prompt-list">
+        {% for item in page.puzzle.checklist %}<li>{{ item }}</li>{% endfor %}
+        {% if page.puzzle.clue_hint %}
+        <li>{{ page.puzzle.clue_hint }}</li>
+        {% else %}
+        <li>Use the blank space to the right of the dashed line to mark your entry, stop-loss and first target.</li>
+        {% endif %}
+      </ul>
+    </div>
+    {% if cfg.book.show_page_numbers %}<span class="page-number">{{ page.number }}</span>{% endif %}
+  </section>
+{% elif page.kind == "workspace" %}
+  <section class="page page--workspace">
+    <div class="dot-grid"></div>
+    <div class="workspace-hint">Workspace &mdash; Puzzle {{ page.puzzle.number }}</div>
+    {% if cfg.book.show_page_numbers %}<span class="page-number">{{ page.number }}</span>{% endif %}
+  </section>
+{% elif page.kind == "answer" %}
+  <section class="page page--answer">
+    {% if page.title %}<h1 class="answer-key-title">{{ page.title }}</h1>{% endif %}
+    {% for answer in page.answers %}
+    <div class="answer">
+      <div class="answer-head">
+        <span>Puzzle {{ answer.number }} &mdash; {{ answer.display_pattern }} <span class="answer-clue">{{ answer.question_label }}{% if answer.clue_label %} &middot; {{ answer.clue_label }}{% endif %}</span></span>
+        <span class="answer-symbol">{{ answer.symbol }} &middot; {{ answer.sector }}</span>
+      </div>
+      <div class="answer-chart">
+        <img src="{{ answer.answer_chart }}" alt="Answer for puzzle {{ answer.number }}">
+      </div>
+      <div class="answer-note">{{ answer.note }}</div>
+      {% if answer.outcome_note %}
+      <div class="answer-note answer-outcome">{{ answer.outcome_note }}</div>
+      {% endif %}
+      {% if answer.levels %}
+      <div class="answer-levels">
+        <span class="lv">Entry <b>{{ answer.levels.entry }}</b></span>
+        <span class="lv">Stop <b>{{ answer.levels.stop }}</b></span>
+        <span class="lv">Target <b>{{ answer.levels.target }}</b></span>
+        <span class="lv muted">Risk {{ answer.levels.risk }}</span>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% if cfg.book.show_page_numbers %}<span class="page-number">{{ page.number }}</span>{% endif %}
+  </section>
+{% endif %}
+{% endfor %}
+</body>
+</html>
