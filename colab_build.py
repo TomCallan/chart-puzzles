@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 """Build the puzzle book on a Colab VM.
 
-Designed for the Colab CLI. Three ways to get the project onto the VM, in
-order of preference for a private repo:
+Designed for the Colab CLI. The repo is public, so the default clone is HTTPS
+and needs no credentials. Other ways to get the project onto the VM:
 
-1. Upload a tarball (no git access needed at all)
+1. Clone from GitHub (default)
    colab --auth adc new --gpu T4 --session book
+   colab --auth adc exec -s book -f colab_build.py
+
+2. Upload a tarball (works with a private repo, no git access needed)
    colab --auth adc upload chart-puzzles.tar.gz /content/chart-puzzles.tar.gz -s book
    colab --auth adc exec -s book -f colab_build.py
 
-2. SSH deploy key (private repo, read-only key)
+3. SSH deploy key (private repo, read-only key)
    ssh-keygen -t ed25519 -f ~/.ssh/chart-puzzles-deploy -N ""
    # add ~/.ssh/chart-puzzles-deploy.pub as a *Deploy Key* (read-only) on GitHub
    colab --auth adc upload ~/.ssh/chart-puzzles-deploy /content/deploy_key -s book
-   colab --auth adc exec -s book -f colab_build.py
-
-3. HTTPS token
-   REPO_URL=https://<token>@github.com/TomCallan/chart-puzzles.git \
+   REPO_URL=git@github.com:TomCallan/chart-puzzles.git \
      colab --auth adc exec -s book -f colab_build.py
 
-One-shot (fresh VM, auto-released) also works:
+One-shot (fresh VM, auto-released):
    colab --auth adc run --gpu T4 colab_build.py
 
 Environment overrides: PROJECT_DIR, TARBALL, REPO_URL, GIT_SSH_KEY.
@@ -34,7 +34,9 @@ from pathlib import Path
 
 PROJECT = Path(os.environ.get("PROJECT_DIR", "/content/trading-puzzle-book"))
 TARBALL = Path(os.environ.get("TARBALL", "/content/chart-puzzles.tar.gz"))
-REPO_URL = os.environ.get("REPO_URL", "git@github.com:TomCallan/chart-puzzles.git")
+REPO_URL = os.environ.get(
+    "REPO_URL", "https://github.com/TomCallan/chart-puzzles.git"
+)
 SSH_KEY = os.environ.get("GIT_SSH_KEY", "/content/deploy_key")
 
 APT_PACKAGES = (

@@ -55,27 +55,22 @@ gcloud auth application-default login \
   --scopes=openid,https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/colaboratory
 ```
 
-Then, with a private repo, either **upload a tarball** (no git access needed):
+Then build and download the results:
 
 ```bash
 colab --auth adc new --gpu T4 --session book
-colab --auth adc upload chart-puzzles.tar.gz /content/chart-puzzles.tar.gz -s book
 colab --auth adc exec -s book -f colab_build.py
 colab --auth adc download /content/trading-puzzle-book/output/workbook.pdf ./workbook.pdf -s book
+colab --auth adc download /content/trading-puzzle-book/build/catalog.json ./catalog.json -s book
 colab --auth adc stop -s book
 ```
 
-or use a **read-only SSH deploy key**:
-
-```bash
-ssh-keygen -t ed25519 -f ~/.ssh/chart-puzzles-deploy -N ""
-# add ~/.ssh/chart-puzzles-deploy.pub as a Deploy Key (read-only) in the repo settings
-colab --auth adc upload ~/.ssh/chart-puzzles-deploy /content/deploy_key -s book
-colab --auth adc exec -s book -f colab_build.py     # clones git@github.com:TomCallan/chart-puzzles.git
-```
-
-`REPO_URL` and `GIT_SSH_KEY` override the clone URL and key path; an HTTPS URL
-with a token also works. One-shot: `colab --auth adc run --gpu T4 colab_build.py`.
+The driver clones the repo over HTTPS by default. To keep the repo private,
+upload a tarball instead (`colab upload chart-puzzles.tar.gz /content/...`), or
+set `REPO_URL=git@github.com:TomCallan/chart-puzzles.git` and upload a read-only
+deploy key to `/content/deploy_key`. `PROJECT_DIR`, `TARBALL`, `REPO_URL` and
+`GIT_SSH_KEY` override the defaults. One-shot: `colab --auth adc run --gpu T4
+colab_build.py`.
 
 ## Practice question types
 
