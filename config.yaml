@@ -37,6 +37,9 @@ data:
 
 patterns:
   min_score: 85.0      # keep only patterns scoring above this (0-100)
+  # Keep only patterns that resolved in the pattern's expected direction over
+  # the resolution window. Off by default; the catalog reports hit rates.
+  require_hit: false
   pivot_window: 5      # bars either side of a swing high/low
   min_separation: 8    # minimum bars between pattern pivots
   min_history_bars: 40

@@ -42,6 +42,8 @@ def build_markdown(catalog: Mapping[str, Any]) -> str:
     lines.append("")
     lines.append(f"- **Universe**: {len(catalog.get('universe', []))} symbols")
     lines.append(f"- **Score threshold**: > {catalog.get('threshold')}")
+    if catalog.get("require_hit"):
+        lines.append("- **Outcome filter**: only patterns that resolved as expected")
     lines.append(f"- **Resolution window**: {catalog.get('resolution_bars')} bars")
     lines.append(
         f"- **Detections**: {totals.get('detected', 0):,} total · "

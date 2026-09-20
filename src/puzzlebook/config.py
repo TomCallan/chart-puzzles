@@ -45,6 +45,7 @@ DEFAULTS: dict[str, Any] = {
     },
     "patterns": {
         "min_score": 85.0,
+        "require_hit": False,
         "pivot_window": 5,
         "min_separation": 8,
         "min_history_bars": 40,

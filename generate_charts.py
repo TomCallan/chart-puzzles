@@ -72,6 +72,12 @@ def main() -> int:
     parser.add_argument("--config", default=None, help="path to config.yaml")
     parser.add_argument("--symbols", nargs="*", default=None, help="override universe")
     parser.add_argument("--min-score", type=float, default=None)
+    parser.add_argument(
+        "--require-hit",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="keep only patterns that resolved in the expected direction",
+    )
     parser.add_argument("--limit", type=int, default=None, help="max charts to keep")
     parser.add_argument("--no-cache", action="store_true")
     args = parser.parse_args()
@@ -79,6 +85,8 @@ def main() -> int:
     cfg = load_config(args.config)
     if args.min_score is not None:
         cfg["patterns"]["min_score"] = args.min_score
+    if args.require_hit is not None:
+        cfg["patterns"]["require_hit"] = args.require_hit
 
     charts_dir = resolve_path(cfg, cfg["output"]["charts_dir"])
     manifest_path = resolve_path(cfg, cfg["output"]["manifest"])
@@ -86,6 +94,7 @@ def main() -> int:
     symbols = args.symbols or load_universe(cfg)
     detectors = build_detectors(cfg)
     min_score = float(cfg["patterns"]["min_score"])
+    require_hit = bool(cfg["patterns"].get("require_hit", False))
     max_per_symbol = int(cfg["patterns"]["max_per_symbol"])
     resolution = int(cfg["chart"]["resolution_bars"])
     single_clue = str(cfg["chart"].get("puzzle_clue", "none")).lower()
@@ -99,8 +108,8 @@ def main() -> int:
     puzzle_index = 0
 
     print(f"Detectors : {', '.join(d.name for d in detectors)}")
-    print(f"Universe  : {', '.join(symbols)}")
-    print(f"Threshold : score > {min_score}\n")
+    print(f"Threshold : score > {min_score}" + ("  (require hit)" if require_hit else ""))
+    print(f"Universe  : {', '.join(symbols)}\n")
 
     stats: dict[str, Any] = {
         "patterns": {},
@@ -141,6 +150,10 @@ def main() -> int:
         matches = dedupe(matches, cfg)
         # Only keep patterns with enough future bars to show a real resolution.
         matches = [m for m in matches if m.end_idx + resolution < len(df)]
+        for match in matches:
+            match.meta["outcome"] = _outcome(df, match, resolution)
+        if require_hit:
+            matches = [m for m in matches if m.meta["outcome"]["hit"]]
         matches = sorted(matches, key=lambda m: -m.score)[:max_per_symbol]
 
         for match in matches:
@@ -168,7 +181,7 @@ def main() -> int:
                 print(f"    ! render failed for {stem}: {exc}", file=sys.stderr)
                 continue
 
-            outcome = _outcome(df, match, resolution)
+            outcome = match.meta["outcome"]
             entries.append(
                 {
                     "symbol": symbol,
@@ -207,6 +220,7 @@ def main() -> int:
 
     stats["universe"] = symbols
     stats["threshold"] = min_score
+    stats["require_hit"] = require_hit
     stats["resolution_bars"] = resolution
     stats["questions"] = dict(Counter(e["question"] for e in entries))
     stats["clues"] = dict(Counter(e["clue"] for e in entries))
