@@ -174,6 +174,43 @@ Patterns with fewer than 12 winning examples available (24): `abandoned_baby_bea
 
 <!-- CATALOG:END -->
 
+## Filling the pool (getting ≥12 examples per pattern)
+
+The catalog reports **hits available** per pattern: detections that score above
+`patterns.min_score` *and* resolve in the pattern's expected direction within
+`chart.resolution_bars`. The target is ≥12 per pattern so the final edition can
+sample evenly. `make_catalog.py` lists any pattern still below 12.
+
+If a pattern is short, in rough order of impact:
+
+1. **Widen the universe.** Gap-based patterns (abandoned baby, tri-star,
+   kicking, three methods, three white soldiers/crows) are rare in liquid large
+   caps. Add small caps, emerging-market ADRs, forex pairs (weekend gaps) and
+   more crypto to `universe`. The default list is already ~280 symbols across
+   asset classes; extending it is the most reliable lever.
+2. **Lower `patterns.min_score`.** 75 is the default; 70 roughly doubles the
+   pool. Quality drops, so a common pattern is to keep the book at a higher
+   threshold and only widen the pool for sampling.
+3. **Extend history.** `data.start: "1995-01-01"` gives more bars; most stocks
+   and forex pairs go back that far.
+4. **Raise `patterns.max_per_symbol`** so one ticker can contribute more than
+   three examples.
+5. **Raise `book.max_puzzles`** if the sample should include more puzzles.
+
+Then regenerate and refresh the catalog:
+
+```bash
+.venv/bin/python generate_charts.py
+.venv/bin/python build_pdf.py
+.venv/bin/python make_catalog.py
+.venv/bin/python make_review.py
+```
+
+**Performance.** Detection dominates; the full ~280-symbol universe takes about
+an hour on a small VM. OHLCV data is cached in `.cache/ohlcv`, so re-runs are
+much faster. Use `--symbols ... --limit N` to iterate on a subset, and
+`--min-score` to try thresholds without editing `config.yaml`.
+
 ## Configuration
 
 Everything lives in `config.yaml`, merged over the defaults in

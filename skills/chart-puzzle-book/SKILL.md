@@ -121,11 +121,23 @@ To review in a browser on another device:
 
 44 candlestick patterns (ported from `pinescript_examples.md`) plus double
 top/bottom and head & shoulders. The trend gate is `patterns.trend_rule`
-(`sma50` / `sma50_200` / `none`). The universe should span several asset
-classes — equities, small caps, crypto, forex, commodities and ETFs — because
-gap-based patterns (abandoned baby, tri-star, kicking, three methods) are rare
-in liquid large caps. `make_catalog.py` reports *hits available* per pattern so
-you can confirm there are enough winning examples to sample from.
+(`sma50` / `sma50_200` / `none`).
+
+The universe should span several asset classes — equities, small caps, EM ADRs,
+crypto, forex, commodities and ETFs — because gap-based patterns (abandoned
+baby, tri-star, kicking, three methods, three white soldiers/crows) are rare in
+liquid large caps.
+
+`make_catalog.py` reports *hits available* per pattern (detections above
+`patterns.min_score` that resolved in the expected direction) and flags any
+pattern below 12. To fill a short pattern: widen `universe` first, then lower
+`patterns.min_score` (75 → 70 roughly doubles the pool), extend `data.start`,
+raise `patterns.max_per_symbol`, or raise `book.max_puzzles`. Regenerate with
+`generate_charts.py`, `build_pdf.py`, `make_catalog.py`, `make_review.py`.
+
+Detection dominates runtime; the default ~280-symbol universe takes roughly an
+hour on a small VM. Data is cached in `.cache/ohlcv`, so re-runs are fast. Use
+`--symbols ... --limit N --min-score X` to iterate without editing config.
 
 ## 6. Extending
 
